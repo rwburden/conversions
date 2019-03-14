@@ -15,7 +15,7 @@ my $kickerOpen  = '<div style="font-size:130%;line-height:normal;margin-bottom:1
 my $kickerClose = $titleClose;
 my $openFootnoteSection = '<div class="footnote_link">'."\n";
 my $closeFootnoteSection = '</div>';
-my $imgTemplate = '<div style="text-align: center; clear: both"> <div style="width: 365px; margin: 0px auto"><a href="%%%large_img_url%%%" target="_blank"><img src="%%%img_url%%%" /><br />Ver ampliación</a> <div style="font-size: 90%; line-height: normal; text-align:right">%%%picture_credit%%%</div><div style="font-size: 90%; line-height: normal; text-align: left">%%%caption%%%</div> </div>  </div>';
+my $imgTemplate = '<div style="text-align: center; clear: both"> <div style="width: 365px; margin: 0px auto"><a href="%%%large_img_url%%%" target="_blank"><img src="%%%img_url%%%" /><br />Ver ampliaciÃ³n</a> <div style="font-size: 90%; line-height: normal; text-align:right">%%%picture_credit%%%</div><div style="font-size: 90%; line-height: normal; text-align: left">%%%caption%%%</div> </div>  </div>';
 my $eirespanolImgTemplate = '<div style="text-align: center; clear: both"><div style="margin: 0px auto 1em"><img src="%%%img_url%%%" /><div style="font-size: 90%; line-height: normal; text-align: right">%%%picture_credit%%%</div><div style="font-size: 90%; line-height: normal; text-align: left">%%%caption%%%</div></div></div>';
 
 open (INPUT, $infile) || die "can't open $infile: $!";
@@ -62,6 +62,8 @@ sub alpha2html
     my  ($alpha_doc, $file) = @_;
     my $footnote_link_section = 0;
     my $parasFound = 0;
+    my $table = 0;
+    my $firstRow = 0;
 
     if ($file !~ m%\n$%)
     {
@@ -94,11 +96,12 @@ sub alpha2html
 	    print OUTPUT $savedLine;
 	    $_ = $kickerOpen.$1.$kickerClose;
 	}
-	elsif ($_ =~ /\[\d+ líneas/)
+	elsif ($_ =~ /\[\d+ lÃ­neas/)
 	{
 	    $lookForTitle = 1;
 	    next;
 	}
+	if ($_ =~ /<table/) {$table = 1; $firstRow = 1}
 
 # 1-, 2-, and 3-digit footnote refs
 	s/\@s(\d)<fu\d>/<a name="fnB$1" id="fnB$1"><\/a><a href="#fn$1">\[$1\]<\/a>/g;
@@ -157,10 +160,34 @@ href="#fn$1$2$3">\[$1$2$3\]<\/a>/g;
 	s/<ql/<br \/>/ig;
 	s/<pa/<br \/>/ig;
 	s/<cf2>(.*?)<cf1>/<em>$1<\/em>/ig;
-
+	s/<table/<div class="table">\n<div class="tr"><div class="th">/i;
+	if ($table)
+	{
+	    # trim whitespace at each end
+	    s/^\s+//;
+	    s/\s+$//;
+	    # skip blank lines
+	    if ($_ eq "") {next}
+	    # "__" (double underscore) indicates a blank row in the table.
+	    elsif ($_ eq "__") {$_ = ""}
+	    if ($firstRow)
+	    {
+		s%( *\t *|    *)%</div><div class="th">%ig;
+		$firstRow = 0;
+	    }
+	    else
+	    {
+		s/^/<div class="tr"><div class="th">/;
+		s%( *\t *|    *)%</div><div class="td">%ig;
+	    }
+	    s%$%</div></div>%;
+	}
+	if ($_ =~ /table>/) 
+	{s%table>%</div>%i; $table = 0}
+	
 
 #Format footnote links
-	if ($_ =~ /^(Vínculos?:?|Enlaces?:?|Links?:?)/i)
+	if ($_ =~ /^(VÃ­nculos?:?|Enlaces?:?|Links?:?)/i)
 	{print OUTPUT $openFootnoteSection;
 	 $footnote_link_section = 1;
 	}
